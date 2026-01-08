@@ -121,50 +121,61 @@ impl Default for StatApp {
         ];
 
         // Function to generate a point inside the reachable area
-        let mut generate_safe_point = |pt_name: String, cost: f32, min_r_percent: f32| {
-            // 1. Pick a random sector
-            let sector_idx = rng.gen_range(0..3);
-            let (start_ang, end_ang, _) = sectors[sector_idx];
+        let mut generate_safe_point =
+            |pt_name: String, pt_desc: String, cost: f32, min_r_percent: f32| {
+                // 1. Pick a random sector
+                let sector_idx = rng.gen_range(0..3);
+                let (start_ang, end_ang, _) = sectors[sector_idx];
 
-            // 2. Pick a random 't' (position in the arc)
-            let t = rng.gen_range(0.0..1.0);
+                // 2. Pick a random 't' (position in the arc)
+                let t = rng.gen_range(0.0..1.0);
 
-            // 3. Calculate exact Angle
-            let angle = start_ang + t * (end_ang - start_ang);
+                // 3. Calculate exact Angle
+                let angle = start_ang + t * (end_ang - start_ang);
 
-            // 4. Calculate the MAX POSSIBLE Radius at this angle given the 120 point cap.
-            // We have 120 points. Min stat is 10. So we have 90 points to distribute between V1 and V2.
-            // At t=0 (Axis), V1=100, V2=10.
-            // At t=0.5 (Midpoint), V1=55, V2=55.
-            // At t=1 (Next Axis), V1=10, V2=100.
-            // We approximate the boundary distribution linearly based on 't':
-            let max_v1 = 100.0 - (90.0 * t);
-            let max_v2 = 10.0 + (90.0 * t);
+                // 4. Calculate the MAX POSSIBLE Radius at this angle given the 120 point cap.
+                // We have 120 points. Min stat is 10. So we have 90 points to distribute between V1 and V2.
+                // At t=0 (Axis), V1=100, V2=10.
+                // At t=0.5 (Midpoint), V1=55, V2=55.
+                // At t=1 (Next Axis), V1=10, V2=100.
+                // We approximate the boundary distribution linearly based on 't':
+                let max_v1 = 100.0 - (90.0 * t);
+                let max_v2 = 10.0 + (90.0 * t);
 
-            // Calculate the physical radius limit using the elliptical formula
-            let max_radius_limit = StatApp::calculate_ellipse_radius(max_v1, max_v2, t);
+                // Calculate the physical radius limit using the elliptical formula
+                let max_radius_limit = StatApp::calculate_ellipse_radius(max_v1, max_v2, t);
 
-            // 5. Generate a random radius *inside* this limit
-            // We ensure it's not too close to the center (min_r_percent)
-            let radius = rng.gen_range((max_radius_limit * min_r_percent)..max_radius_limit);
+                // 5. Generate a random radius *inside* this limit
+                // We ensure it's not too close to the center (min_r_percent)
+                let radius = rng.gen_range((max_radius_limit * min_r_percent)..max_radius_limit);
 
-            perks.push(PerkPoint {
-                name: pt_name,
-                description: "Passive bonus".to_string(),
-                angle,
-                radius_val: radius,
-                cost,
-            });
-        };
+                perks.push(PerkPoint {
+                    name: pt_name,
+                    description: pt_desc,
+                    angle,
+                    radius_val: radius,
+                    cost,
+                });
+            };
 
         // --- B. Generate 40 RED GIANTS (Cost 5.0) ---
         for i in 0..40 {
-            generate_safe_point(format!("Red Giant {}", i + 1), 5.0, 0.4);
+            generate_safe_point(
+                format!("Red Giant {}", i + 1),
+                "Moderate perk".to_string(),
+                5.0,
+                0.4,
+            );
         }
 
         // --- C. Generate 300 STARS (Cost 2.0) ---
         for i in 0..300 {
-            generate_safe_point(format!("Star {}", i + 1), 2.0, 0.2);
+            generate_safe_point(
+                format!("Star {}", i + 1),
+                "Small perk".to_string(),
+                2.0,
+                0.2,
+            );
         }
 
         Self {
