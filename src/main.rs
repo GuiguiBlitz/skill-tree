@@ -194,34 +194,49 @@ impl eframe::App for StatApp {
             // Draw Perks
             let perks = vec![
                 PerkPoint {
-                    name: "Warrior",
+                    name: "Warrior and Area modifiers",
                     angle: ANG_STR_RED,
                     radius_val: 80.0,
                 },
                 PerkPoint {
-                    name: "Ranger",
+                    name: "Ranger and Projectiles modifiers",
                     angle: ANG_DEX_GREEN,
                     radius_val: 80.0,
                 },
                 PerkPoint {
-                    name: "Mage",
+                    name: "Mage and Forking modifiers",
                     angle: ANG_INT_BLUE,
                     radius_val: 80.0,
                 },
                 PerkPoint {
-                    name: "Str/Dex",
+                    name: "Duelist",
                     angle: (ANG_STR_RED + ANG_DEX_GREEN) / 2.0,
                     radius_val: 40.0,
                 },
                 PerkPoint {
-                    name: "Dex/Int",
+                    name: "Monk",
+                    angle: (ANG_STR_RED + ANG_DEX_GREEN) / 2.0,
+                    radius_val: 55.0,
+                },
+                PerkPoint {
+                    name: "Ranger-Mage",
                     angle: (ANG_DEX_GREEN + (ANG_INT_BLUE + 2.0 * PI)) / 2.0,
                     radius_val: 40.0,
                 },
                 PerkPoint {
-                    name: "Int/Str",
+                    name: "Arcane Trickster",
+                    angle: (ANG_DEX_GREEN + (ANG_INT_BLUE + 2.0 * PI)) / 2.0,
+                    radius_val: 55.0,
+                },
+                PerkPoint {
+                    name: "Battlemage",
                     angle: (ANG_INT_BLUE + ANG_STR_RED) / 2.0,
                     radius_val: 40.0,
+                },
+                PerkPoint {
+                    name: "Paladin",
+                    angle: (ANG_INT_BLUE + ANG_STR_RED) / 2.0,
+                    radius_val: 55.0,
                 },
             ];
 
@@ -242,15 +257,15 @@ impl eframe::App for StatApp {
                 };
 
                 painter.circle(pos, radius, color, Stroke::new(1.0, stroke_color));
-                if is_unlocked {
-                    painter.text(
-                        pos + egui::Vec2::new(0.0, -10.0),
-                        egui::Align2::CENTER_BOTTOM,
-                        perk.name,
-                        egui::FontId::proportional(12.0),
-                        Color32::WHITE,
-                    );
-                }
+                // if is_unlocked {
+                painter.text(
+                    pos + egui::Vec2::new(0.0, -10.0),
+                    egui::Align2::CENTER_BOTTOM,
+                    perk.name,
+                    egui::FontId::proportional(12.0),
+                    Color32::WHITE,
+                );
+                // }
             }
         });
     }
@@ -260,7 +275,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Stat Plotter",
         eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_inner_size([600.0, 600.0]),
+            viewport: egui::ViewportBuilder::default().with_inner_size([1920.0, 1080.0]),
             ..Default::default()
         },
         Box::new(|_cc| Box::<StatApp>::default()),
