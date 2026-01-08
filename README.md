@@ -1,6 +1,6 @@
 # 💫Nebula Forge ⭐
 
-Idea for ARPG passive tree with stat based elyptical area based unlocks
+Idea for ARPG passive tree with stat based elyptical area unlocks
 
 ![alt text](image.png)
 
