@@ -435,6 +435,8 @@ impl eframe::App for StatApp {
                             let req = perk.radius_val;
                             let deg = perk.angle.to_degrees().rem_euclid(360.0);
                             let eps = 5.0;
+
+                            // --- Pure Stats ---
                             if (deg - ANG_STR_RED.to_degrees()).abs() < eps {
                                 ui.colored_label(
                                     Color32::from_rgb(255, 80, 80),
@@ -451,7 +453,9 @@ impl eframe::App for StatApp {
                                     format!("{:.0} INT", req),
                                 );
                             } else {
+                                // --- Hybrid Stats ---
                                 if (45.0..135.0).contains(&deg) {
+                                    // STR + DEX (Red + Green)
                                     ui.colored_label(
                                         Color32::from_rgb(255, 80, 80),
                                         format!("{:.0} STR", req),
@@ -462,23 +466,27 @@ impl eframe::App for StatApp {
                                         format!("{:.0} DEX", req),
                                     );
                                 } else if (135.0..270.0).contains(&deg) {
+                                    // STR + INT (Red + Blue)
                                     ui.colored_label(
                                         Color32::from_rgb(255, 80, 80),
                                         format!("{:.0} STR", req),
                                     );
                                     ui.label("+");
+                                    // FIXED: Was Green, now Blue (80, 80, 255)
                                     ui.colored_label(
-                                        Color32::from_rgb(80, 255, 80),
+                                        Color32::from_rgb(80, 80, 255),
                                         format!("{:.0} INT", req),
                                     );
                                 } else {
+                                    // DEX + INT (Green + Blue)
                                     ui.colored_label(
                                         Color32::from_rgb(80, 255, 80),
                                         format!("{:.0} DEX", req),
                                     );
                                     ui.label("+");
+                                    // FIXED: Was Green, now Blue (80, 80, 255)
                                     ui.colored_label(
-                                        Color32::from_rgb(80, 255, 80),
+                                        Color32::from_rgb(80, 80, 255),
                                         format!("{:.0} INT", req),
                                     );
                                 }
