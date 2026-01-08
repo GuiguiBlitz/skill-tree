@@ -28,11 +28,11 @@ struct StatApp {
     zoom: f32,
     offset: egui::Vec2,
     perks: Vec<PerkPoint>,
+    // --- New Field for the background ---
+    bg_texture: Option<egui::TextureHandle>,
 }
 
 impl StatApp {
-    // Shared math for elliptical radius calculation
-    // We make this static so we can use it during generation
     fn calculate_ellipse_radius(v1: f32, v2: f32, t_sector: f32) -> f32 {
         if v1 < 1.0 && v2 < 1.0 {
             0.0
@@ -111,42 +111,23 @@ impl Default for StatApp {
             });
         }
 
-        // --- RANDOM GENERATION HELPERS ---
-        // We define the sectors to pick from
-        // (Start Angle, End Angle, V1_is_Start?)
+        // --- Random Generation Helpers ---
         let sectors = [
-            (ANG_DEX_GREEN, ANG_STR_RED, true),             // Dex -> Str
-            (ANG_STR_RED, ANG_INT_BLUE, true),              // Str -> Int
-            (ANG_INT_BLUE, ANG_DEX_GREEN + 2.0 * PI, true), // Int -> Dex
+            (ANG_DEX_GREEN, ANG_STR_RED, true),
+            (ANG_STR_RED, ANG_INT_BLUE, true),
+            (ANG_INT_BLUE, ANG_DEX_GREEN + 2.0 * PI, true),
         ];
 
-        // Function to generate a point inside the reachable area
         let mut generate_safe_point =
             |pt_name: String, pt_desc: String, cost: f32, min_r_percent: f32| {
-                // 1. Pick a random sector
                 let sector_idx = rng.gen_range(0..3);
                 let (start_ang, end_ang, _) = sectors[sector_idx];
-
-                // 2. Pick a random 't' (position in the arc)
                 let t = rng.gen_range(0.0..1.0);
-
-                // 3. Calculate exact Angle
                 let angle = start_ang + t * (end_ang - start_ang);
 
-                // 4. Calculate the MAX POSSIBLE Radius at this angle given the 120 point cap.
-                // We have 120 points. Min stat is 10. So we have 90 points to distribute between V1 and V2.
-                // At t=0 (Axis), V1=100, V2=10.
-                // At t=0.5 (Midpoint), V1=55, V2=55.
-                // At t=1 (Next Axis), V1=10, V2=100.
-                // We approximate the boundary distribution linearly based on 't':
                 let max_v1 = 100.0 - (90.0 * t);
                 let max_v2 = 10.0 + (90.0 * t);
-
-                // Calculate the physical radius limit using the elliptical formula
                 let max_radius_limit = StatApp::calculate_ellipse_radius(max_v1, max_v2, t);
-
-                // 5. Generate a random radius *inside* this limit
-                // We ensure it's not too close to the center (min_r_percent)
                 let radius = rng.gen_range((max_radius_limit * min_r_percent)..max_radius_limit);
 
                 perks.push(PerkPoint {
@@ -158,7 +139,7 @@ impl Default for StatApp {
                 });
             };
 
-        // --- B. Generate 40 RED GIANTS (Cost 5.0) ---
+        // --- B. Generate 40 RED GIANTS ---
         for i in 0..40 {
             generate_safe_point(
                 format!("Red Giant {}", i + 1),
@@ -168,7 +149,7 @@ impl Default for StatApp {
             );
         }
 
-        // --- C. Generate 300 STARS (Cost 2.0) ---
+        // --- C. Generate 300 STARS ---
         for i in 0..300 {
             generate_safe_point(
                 format!("Star {}", i + 1),
@@ -185,6 +166,7 @@ impl Default for StatApp {
             zoom: 1.0,
             offset: egui::Vec2::ZERO,
             perks,
+            bg_texture: None, // Initialize as None
         }
     }
 }
@@ -219,7 +201,6 @@ impl StatApp {
 
     fn get_current_radius_at_angle(&self, angle_rad: f32) -> f32 {
         let angle_deg = angle_rad.to_degrees().rem_euclid(360.0);
-
         let (v1, v2, t_sector) = if (45.0..135.0).contains(&angle_deg) {
             let t = (angle_rad - ANG_DEX_GREEN) / (ANG_STR_RED - ANG_DEX_GREEN);
             (self.dexterity, self.strength, t)
@@ -237,14 +218,29 @@ impl StatApp {
             let t = (curr - start) / (end - start);
             (self.intelligence, self.dexterity, t)
         };
-
-        // Use the shared static helper
         Self::calculate_ellipse_radius(v1, v2, t_sector)
     }
 }
 
 impl eframe::App for StatApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // --- 1. Load Texture if not loaded ---
+        if self.bg_texture.is_none() {
+            // Load the image from the embedded bytes
+            let image_data = include_bytes!("space.png");
+            let image = image::load_from_memory(image_data).expect("Failed to load space.png");
+            let size = [image.width() as _, image.height() as _];
+            let image_buffer = image.to_rgba8();
+            let pixels = image_buffer.as_flat_samples();
+
+            // Create egui Image
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+
+            // Upload to GPU
+            self.bg_texture =
+                Some(ctx.load_texture("space_bg", color_image, egui::TextureOptions::LINEAR));
+        }
+
         let total_points = self.strength + self.intelligence + self.dexterity;
 
         egui::SidePanel::left("controls_panel").show(ctx, |ui| {
@@ -309,6 +305,17 @@ impl eframe::App for StatApp {
                 ui.available_size_before_wrap(),
                 egui::Sense::click_and_drag(),
             );
+
+            // --- 2. Draw Background Image ---
+            if let Some(texture) = &self.bg_texture {
+                painter.image(
+                    texture.id(),
+                    response.rect, // Fill the entire central panel
+                    egui::Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), // UV Coords (0,0) to (1,1)
+                    Color32::WHITE,
+                );
+            }
+
             if response.dragged_by(egui::PointerButton::Primary) {
                 self.offset += response.drag_delta();
             }
@@ -322,6 +329,7 @@ impl eframe::App for StatApp {
             let max_radius =
                 (response.rect.width().min(response.rect.height()) / 2.0 * 0.8) * self.zoom;
 
+            // Draw Background Sectors
             let arc_segments = vec![
                 (337.5f32, 450.0f32, Color32::GREEN),
                 (90.0f32, 202.5f32, Color32::RED),
@@ -338,6 +346,7 @@ impl eframe::App for StatApp {
                 }
                 painter.add(Shape::line(pts, Stroke::new(4.0, col.gamma_multiply(0.6))));
             }
+            // Axes
             for &(ang, col) in &[
                 (ANG_STR_RED, Color32::RED),
                 (ANG_DEX_GREEN, Color32::GREEN),
@@ -350,6 +359,7 @@ impl eframe::App for StatApp {
                 painter.line_segment([center, tip], Stroke::new(1.0, col.gamma_multiply(0.3)));
             }
 
+            // Draw Blob
             let mut blob_pts = Vec::new();
             for i in 0..90 {
                 let a = (i as f32 / 90.0) * 2.0 * PI;
@@ -373,6 +383,7 @@ impl eframe::App for StatApp {
                 stroke: Stroke::new(2.5, Color32::WHITE),
             }));
 
+            // Draw Perks
             let pointer_pos = ctx.input(|i| i.pointer.hover_pos());
 
             for perk in &self.perks {
@@ -420,12 +431,10 @@ impl eframe::App for StatApp {
                             ui.label(format!("{:.1}", perk.cost));
                         });
                         ui.separator();
-
                         ui.horizontal(|ui| {
                             let req = perk.radius_val;
                             let deg = perk.angle.to_degrees().rem_euclid(360.0);
                             let eps = 5.0;
-
                             if (deg - ANG_STR_RED.to_degrees()).abs() < eps {
                                 ui.colored_label(
                                     Color32::from_rgb(255, 80, 80),
@@ -459,7 +468,7 @@ impl eframe::App for StatApp {
                                     );
                                     ui.label("+");
                                     ui.colored_label(
-                                        Color32::from_rgb(80, 80, 255),
+                                        Color32::from_rgb(80, 255, 80),
                                         format!("{:.0} INT", req),
                                     );
                                 } else {
@@ -469,7 +478,7 @@ impl eframe::App for StatApp {
                                     );
                                     ui.label("+");
                                     ui.colored_label(
-                                        Color32::from_rgb(80, 80, 255),
+                                        Color32::from_rgb(80, 255, 80),
                                         format!("{:.0} INT", req),
                                     );
                                 }
